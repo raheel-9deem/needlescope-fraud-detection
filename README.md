@@ -250,7 +250,7 @@ This project is released under the [MIT License](LICENSE).
 - Website: [raheelnadeem.online](https://raheelnadeem.online)
 - GitHub: [@raheel-9deem](https://github.com/raheel-9deem)
 
-If this project helps you, consider giving it a star.
+If this project helps you, consider to give it a star ⭐.
 
 ## Acknowledgements
 
