@@ -4,5 +4,4 @@ data/
 __pycache__/
 .ipynb_checkpoints/
 .env
-*.joblib
 "@ | Set-Content .gitignore
