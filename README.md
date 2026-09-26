@@ -10,6 +10,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-In%20Progress-yellow)
+![EDA](https://img.shields.io/badge/EDA-Complete-brightgreen)
 
 ---
 
@@ -101,6 +102,45 @@ flowchart LR
 | Unsupervised anomaly detection | Isolation Forest |
 | Tuning | RandomizedSearchCV optimised for PR-AUC |
 | Explainability | SHAP (global summary and single-transaction explanations) |
+
+## Exploratory Data Analysis — Key Findings
+
+- Dataset: 284,278 transactions after removing 529 exact duplicates (5 of which were fraud), 487 fraud (~0.17%) — confirms severe class imbalance
+- No missing values anywhere in the dataset
+- Features most correlated with `Class`: `V17`, `V14`, `V12`, `V3`, `V10`, `V16`, `V7`, `V11`, `V4` — these show the strongest early predictive signal
+- `Amount` and `Time` have near-zero linear correlation with `Class`, though tree-based models may still pick up non-linear patterns
+- V-features are largely uncorrelated with each other, as expected from their PCA origin
+
+## Preprocessing
+
+- Stratified 80/20 train/test split — train fraud ratio 0.1667%, test fraud ratio 0.1668% (near-identical, confirming stratification worked)
+- `Time` and `Amount` scaled with `RobustScaler`, fit on the training set only and applied to the test set to avoid data leakage
+- `V1`–`V28` left as-is, since they are already PCA outputs
+- Fitted scaler and processed train/test splits saved to `models/scaler.joblib` and `data/processed/`
+
+## Baseline Models — the "Accuracy Trap" Proven
+
+Logistic Regression and Random Forest were trained with **no** imbalance handling to establish a reference point.
+
+| Model | Accuracy | Precision | Recall | F1 |
+|---|---|---|---|---|
+| Logistic Regression (baseline) | 99.91% | 84.9% | 55.6% | 67.2% |
+| Random Forest (baseline) | 99.96% | 95.7% | 78.2% | 86.0% |
+
+Both models show near-perfect accuracy, but Recall tells the real story: Logistic Regression misses nearly half of all fraud, and Random Forest still misses about 1 in 5 (31 of 142 fraud cases in the test set). This gap is exactly what the imbalance-handling phase (class weighting, SMOTE) aims to close.
+
+## Imbalance Handling — In Progress
+
+**Technique 1: `class_weight="balanced"`** — penalizes misclassifying fraud far more heavily during training, without resampling the data.
+
+| Model | Precision | Recall | F1 |
+|---|---|---|---|
+| LogReg (baseline) | 84.9% | 55.6% | 67.2% |
+| Random Forest (baseline) | 95.7% | 78.2% | 86.0% |
+| LogReg (class_weight=balanced) | 5.3% | 88.7% | 10.0% |
+| Random Forest (class_weight=balanced) | 96.2% | 71.1% | 81.8% |
+
+Class weighting affects each model differently. On Logistic Regression, recall jumped to 88.7% but precision collapsed to 5.3% — the decision boundary over-corrected, flagging far too many genuine transactions as fraud. On Random Forest, the effect was milder and even slightly reduced recall, since tree ensembles already have some natural resistance to imbalance. This shows no single technique behaves identically across every model — the next techniques (undersampling, oversampling, SMOTE) will be compared against both baselines to find what works best.
 
 ## Results
 
@@ -215,9 +255,10 @@ The request body takes the 30 model features: `Time`, `V1` to `V28`, and `Amount
 ## Roadmap
 
 - [x] Project setup and environment
-- [ ] Exploratory data analysis
-- [ ] Preprocessing and leakage-safe splitting
-- [ ] Baseline models and the accuracy trap
+- [x] Exploratory data analysis
+- [x] Preprocessing and leakage-safe splitting
+- [x] Baseline models and the accuracy trap
+- [ ] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
 - [ ] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
 - [ ] XGBoost, LightGBM, Isolation Forest and hyperparameter tuning
 - [ ] Threshold tuning and cost-based analysis
