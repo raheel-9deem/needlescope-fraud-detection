@@ -10,7 +10,6 @@
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-In%20Progress-yellow)
-![EDA](https://img.shields.io/badge/EDA-Complete-brightgreen)
 
 ---
 
@@ -102,14 +101,6 @@ flowchart LR
 | Unsupervised anomaly detection | Isolation Forest |
 | Tuning | RandomizedSearchCV optimised for PR-AUC |
 | Explainability | SHAP (global summary and single-transaction explanations) |
-
-## Exploratory Data Analysis — Key Findings
-
-- Dataset: 284,278 transactions after removing 529 exact duplicates (5 of which were fraud), 487 fraud (~0.17%) — confirms severe class imbalance
-- No missing values anywhere in the dataset
-- Features most correlated with `Class`: `V17`, `V14`, `V12`, `V3`, `V10`, `V16`, `V7`, `V11`, `V4` — these show the strongest early predictive signal
-- `Amount` and `Time` have near-zero linear correlation with `Class`, though tree-based models may still pick up non-linear patterns
-- V-features are largely uncorrelated with each other, as expected from their PCA origin
 
 ## Results
 
@@ -224,7 +215,7 @@ The request body takes the 30 model features: `Time`, `V1` to `V28`, and `Amount
 ## Roadmap
 
 - [x] Project setup and environment
-- [x] Exploratory data analysis
+- [ ] Exploratory data analysis
 - [ ] Preprocessing and leakage-safe splitting
 - [ ] Baseline models and the accuracy trap
 - [ ] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
