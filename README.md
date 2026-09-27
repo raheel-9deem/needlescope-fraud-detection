@@ -129,18 +129,26 @@ Logistic Regression and Random Forest were trained with **no** imbalance handlin
 
 Both models show near-perfect accuracy, but Recall tells the real story: Logistic Regression misses nearly half of all fraud, and Random Forest still misses about 1 in 5 (31 of 142 fraud cases in the test set). This gap is exactly what the imbalance-handling phase (class weighting, SMOTE) aims to close.
 
-## Imbalance Handling — In Progress
+## Imbalance Handling — Complete
 
-**Technique 1: `class_weight="balanced"`** — penalizes misclassifying fraud far more heavily during training, without resampling the data.
+Five techniques were compared against Logistic Regression and Random Forest baselines: `class_weight="balanced"`, random undersampling, random oversampling, and SMOTE.
 
 | Model | Precision | Recall | F1 |
 |---|---|---|---|
 | LogReg (baseline) | 84.9% | 55.6% | 67.2% |
-| Random Forest (baseline) | 95.7% | 78.2% | 86.0% |
+| **Random Forest (baseline)** | **95.7%** | **78.2%** | **86.0%** |
 | LogReg (class_weight=balanced) | 5.3% | 88.7% | 10.0% |
 | Random Forest (class_weight=balanced) | 96.2% | 71.1% | 81.8% |
+| LogReg (random undersampling) | 3.5% | 88.0% | 6.7% |
+| Random Forest (random undersampling) | 5.0% | 88.0% | 9.5% |
+| LogReg (random oversampling) | 5.3% | 88.7% | 10.0% |
+| Random Forest (random oversampling) | 96.3% | 73.2% | 83.2% |
+| LogReg (SMOTE) | 5.2% | 88.0% | 9.7% |
+| Random Forest (SMOTE) | 91.4% | 74.6% | 82.2% |
 
-Class weighting affects each model differently. On Logistic Regression, recall jumped to 88.7% but precision collapsed to 5.3% — the decision boundary over-corrected, flagging far too many genuine transactions as fraud. On Random Forest, the effect was milder and even slightly reduced recall, since tree ensembles already have some natural resistance to imbalance. This shows no single technique behaves identically across every model — the next techniques (undersampling, oversampling, SMOTE) will be compared against both baselines to find what works best.
+**Key finding:** no imbalance-handling technique beat the untouched Random Forest baseline (F1 86.0%). Every resampling approach raised recall but at a steep precision cost — undersampling in particular collapsed Random Forest's precision to 5% by discarding almost all majority-class data. This happens because the dataset's top features (`V17`, `V14`, `V12`, etc.) already separate fraud from genuine transactions cleanly, so artificially rebalancing the training data confuses the model rather than helping it. Logistic Regression's oversampling result was numerically identical to its class-weighting result, since duplicating minority rows and reweighting the loss function have an equivalent effect on a linear model.
+
+**Decision:** Random Forest (baseline) is the interim best model. The next steps — gradient boosting models (Notebook 05) and decision threshold tuning (Notebook 06) — are expected to be more productive than further resampling for this dataset.
 
 ## Results
 
@@ -258,7 +266,8 @@ The request body takes the 30 model features: `Time`, `V1` to `V28`, and `Amount
 - [x] Exploratory data analysis
 - [x] Preprocessing and leakage-safe splitting
 - [x] Baseline models and the accuracy trap
-- [ ] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
+- [x] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
+- [ ] XGBoost, LightGBM, Isolation Forest and hyperparameter tuning
 - [ ] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
 - [ ] XGBoost, LightGBM, Isolation Forest and hyperparameter tuning
 - [ ] Threshold tuning and cost-based analysis
