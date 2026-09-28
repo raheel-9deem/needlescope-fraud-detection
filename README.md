@@ -150,6 +150,26 @@ Five techniques were compared against Logistic Regression and Random Forest base
 
 **Decision:** Random Forest (baseline) is the interim best model. The next steps — gradient boosting models (Notebook 05) and decision threshold tuning (Notebook 06) — are expected to be more productive than further resampling for this dataset.
 
+## Gradient Boosting Models
+
+From this point on, models are compared with **PR-AUC** (area under the Precision-Recall curve) alongside F1. F1 only measures a model at one fixed cutoff (0.5), while PR-AUC scores the model's ranking quality across every possible cutoff, so it is a fairer way to compare models whose probabilities sit on different scales.
+
+| Model | Precision | Recall | F1 | PR-AUC |
+|---|---|---|---|---|
+| XGBoost (plain) | 96.2% | 71.1% | 81.8% | 0.825 |
+| LightGBM (stabilised configuration) | 93.8% | 74.7% | 83.1% | 0.816 |
+| XGBoost (`scale_pos_weight`) | 93.1% | 76.1% | 83.7% | 0.814 |
+| Random Forest (baseline) | 95.7% | 78.2% | 86.0% | 0.803 |
+| LightGBM (default settings) | 8.1% | 4.9% | 6.1% | 0.006 |
+| LightGBM (default + `scale_pos_weight`) | 2.8% | 83.1% | 5.4% | 0.023 |
+
+**Key findings:**
+
+- **The four healthy models are effectively tied.** Their PR-AUC spans only 0.803–0.825, and the gap between the model that caught the most fraud (Random Forest, 111 of 142) and the one that caught the fewest (XGBoost plain, 101 of 142) is 10 cases. With only 142 fraud cases in the test set, a single train/test split cannot reliably rank them; cross-validation is planned to settle this.
+- **F1 and PR-AUC disagree on the ranking.** Random Forest has the best F1 (at the default 0.5 cutoff) but the lowest PR-AUC, a reminder that a fixed cutoff can favour one model's probability scale over another's. Threshold tuning (Notebook 06) addresses this directly.
+- **Default LightGBM diverged on this dataset.** Training loss oscillated instead of falling, raw model scores reached roughly ±10^5, and about 99.99% of predicted probabilities saturated to exactly 0 or 1, leaving the model at near-chance PR-AUC (0.006–0.023). A more conservative configuration (lower learning rate, fewer leaves, L2 regularisation and a cap on leaf output) trained stably and reached PR-AUC 0.816. Several settings were changed together, so which one was responsible was not isolated.
+- **`scale_pos_weight` had a mild effect on XGBoost** (recall +5 points, precision −3 points), far gentler than the precision collapse seen with Logistic Regression in the imbalance-handling comparison.
+
 ## Results
 
 > Results will be added here after the evaluation notebook is completed. This section will contain the final model comparison table, the Precision-Recall curves and the cost-based threshold analysis.
@@ -267,9 +287,8 @@ The request body takes the 30 model features: `Time`, `V1` to `V28`, and `Amount
 - [x] Preprocessing and leakage-safe splitting
 - [x] Baseline models and the accuracy trap
 - [x] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
-- [ ] XGBoost, LightGBM, Isolation Forest and hyperparameter tuning
-- [ ] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
-- [ ] XGBoost, LightGBM, Isolation Forest and hyperparameter tuning
+- [x] Gradient boosting models (XGBoost, LightGBM) evaluated with PR-AUC
+- [ ] Isolation Forest, cross-validation and hyperparameter tuning
 - [ ] Threshold tuning and cost-based analysis
 - [ ] SHAP explainability
 - [ ] Refactor notebooks into a reusable `src/` package
