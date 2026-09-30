@@ -189,7 +189,23 @@ Its PR-AUC (0.108) is far below the supervised models (0.80+), but about 64× ab
 | LightGBM (stabilised) | 0.853 | ±0.029 |
 | Random Forest (baseline) | 0.836 | ±0.032 |
 
-The spread between models (~0.02) is smaller than each model's own run-to-run variation (std ~0.03), so **all four models perform statistically equivalently** — the differences seen on the single train/test split were mostly noise from having only 142 fraud cases to evaluate on. **XGBoost with `scale_pos_weight` was selected to carry forward** into threshold tuning, as it had the highest mean and a strong, consistent recall, though any of the four would have been a reasonable choice.
+The spread between models (~0.02) is smaller than each model's own run-to-run variation (std ~0.03), so **all four models perform statistically equivalently** — the differences seen on the single train/test split were mostly noise from having only 142 fraud cases to evaluate on.
+
+## Hyperparameter Tuning
+
+XGBoost was tuned with `RandomizedSearchCV` (30 random combinations of `n_estimators`, `learning_rate`, `max_depth`, `subsample`, `colsample_bytree`, and `scale_pos_weight`, each scored with 5-fold cross-validated PR-AUC).
+
+| Model | Precision | Recall | F1 | PR-AUC |
+|---|---|---|---|---|
+| **XGBoost (tuned)** | 95.7% | 78.2% | 86.0% | **0.835** |
+| XGBoost (plain) | 96.2% | 71.1% | 81.8% | 0.825 |
+| LightGBM (stabilised) | 93.8% | 74.7% | 83.1% | 0.816 |
+| XGBoost (`scale_pos_weight`) | 93.1% | 76.1% | 83.7% | 0.814 |
+| Random Forest (baseline) | 95.7% | 78.2% | 86.0% | 0.803 |
+
+The tuned model reached the best PR-AUC of the project (0.835), a modest ~0.01 improvement over the untuned XGBoost — consistent with cross-validation already showing all models were closely matched, so a large jump was never expected. Its precision, recall, and F1 happen to exactly match the Random Forest baseline; this is a coincidence from the small number of fraud cases (142) in the test set producing the same confusion matrix at the default 0.5 cutoff, not evidence the two models are equivalent — their differing PR-AUC (0.835 vs 0.803) confirms they rank transactions differently underneath.
+
+**Decision:** XGBoost (tuned) is the model selected for threshold tuning (next). Saved as `models/xgb_tuned.joblib`.
 
 ## Results
 
@@ -310,7 +326,7 @@ The request body takes the 30 model features: `Time`, `V1` to `V28`, and `Amount
 - [x] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
 - [x] Gradient boosting models (XGBoost, LightGBM) evaluated with PR-AUC
 - [x] Isolation Forest (unsupervised baseline) and 5-fold cross-validation
-- [ ] Hyperparameter tuning
+- [x] Hyperparameter tuning
 - [ ] Threshold tuning and cost-based analysis
 - [ ] SHAP explainability
 - [ ] Refactor notebooks into a reusable `src/` package
