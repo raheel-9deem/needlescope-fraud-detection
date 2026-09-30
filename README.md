@@ -170,6 +170,27 @@ From this point on, models are compared with **PR-AUC** (area under the Precisio
 - **Default LightGBM diverged on this dataset.** Training loss oscillated instead of falling, raw model scores reached roughly ±10^5, and about 99.99% of predicted probabilities saturated to exactly 0 or 1, leaving the model at near-chance PR-AUC (0.006–0.023). A more conservative configuration (lower learning rate, fewer leaves, L2 regularisation and a cap on leaf output) trained stably and reached PR-AUC 0.816. Several settings were changed together, so which one was responsible was not isolated.
 - **`scale_pos_weight` had a mild effect on XGBoost** (recall +5 points, precision −3 points), far gentler than the precision collapse seen with Logistic Regression in the imbalance-handling comparison.
 
+## Isolation Forest and Cross-Validation
+
+**Isolation Forest** — an unsupervised anomaly detector that never sees the fraud labels during training — was tested to measure how much value the labels actually add.
+
+| Model | Precision | Recall | F1 | PR-AUC |
+|---|---|---|---|---|
+| Isolation Forest (unsupervised) | 21.5% | 21.8% | 21.7% | 0.108 |
+
+Its PR-AUC (0.108) is far below the supervised models (0.80+), but about 64× above the random-guess floor (~0.0017). This shows fraud is genuinely somewhat separable from genuine transactions without labels, just far less effectively than with them — supervised learning is clearly the right approach here, as expected, but the size of the gap is now a measured number rather than an assumption.
+
+**5-fold Stratified Cross-Validation** was then run on the four supervised models (on the training set only, never touching the held-out test set) to check whether the small PR-AUC differences seen on a single split were statistically meaningful:
+
+| Model | Mean PR-AUC | Std |
+|---|---|---|
+| XGBoost (`scale_pos_weight`) | 0.856 | ±0.032 |
+| XGBoost (plain) | 0.854 | ±0.032 |
+| LightGBM (stabilised) | 0.853 | ±0.029 |
+| Random Forest (baseline) | 0.836 | ±0.032 |
+
+The spread between models (~0.02) is smaller than each model's own run-to-run variation (std ~0.03), so **all four models perform statistically equivalently** — the differences seen on the single train/test split were mostly noise from having only 142 fraud cases to evaluate on. **XGBoost with `scale_pos_weight` was selected to carry forward** into threshold tuning, as it had the highest mean and a strong, consistent recall, though any of the four would have been a reasonable choice.
+
 ## Results
 
 > Results will be added here after the evaluation notebook is completed. This section will contain the final model comparison table, the Precision-Recall curves and the cost-based threshold analysis.
@@ -288,7 +309,8 @@ The request body takes the 30 model features: `Time`, `V1` to `V28`, and `Amount
 - [x] Baseline models and the accuracy trap
 - [x] Imbalance handling comparison (class weights, undersampling, oversampling, SMOTE)
 - [x] Gradient boosting models (XGBoost, LightGBM) evaluated with PR-AUC
-- [ ] Isolation Forest, cross-validation and hyperparameter tuning
+- [x] Isolation Forest (unsupervised baseline) and 5-fold cross-validation
+- [ ] Hyperparameter tuning
 - [ ] Threshold tuning and cost-based analysis
 - [ ] SHAP explainability
 - [ ] Refactor notebooks into a reusable `src/` package
