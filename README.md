@@ -207,6 +207,27 @@ The tuned model reached the best PR-AUC of the project (0.835), a modest ~0.01 i
 
 **Decision:** XGBoost (tuned) is the model selected for threshold tuning (next). Saved as `models/xgb_tuned.joblib`.
 
+## Threshold Tuning and Cost-Based Analysis
+
+A classifier outputs a fraud probability, and a cutoff (the *threshold*) turns it into a yes/no decision. Every result so far used the default 0.5, which implicitly treats a missed fraud and a false alarm as equally costly. In practice a missed fraud costs far more, so the threshold was tuned for the XGBoost (tuned) model on the held-out test set using two different goals.
+
+**Cost model.** A missed fraud (false negative) costs the average fraud transaction amount in the dataset (about $122, computed from the data). A false alarm (false positive) costs **$5, which is an assumption**, not a measured figure, since the dataset contains no information about the cost of handling a false alarm.
+
+| Threshold | Value | Fraud caught | Fraud missed | False alarms | Recall | Precision | Estimated cost |
+|---|---|---|---|---|---|---|---|
+| Default | 0.5 | 111 | 31 | 5 | 78.2% | 95.7% | $3,813.55 |
+| F1-optimal | 0.2352 | 114 | 28 | 7 | 80.3% | 94.2% | ~$3,457 |
+| **Cost-optimal** | **0.0048** | **121** | **21** | **107** | **85.2%** | **53.1%** | **$3,101.44** |
+
+**Key findings:**
+
+- **The two goals disagree.** The F1-optimal threshold balances precision and recall mathematically; the cost-optimal threshold minimizes money lost. They land at very different cutoffs (0.2352 vs 0.0048), so "best threshold" depends on what is being optimized.
+- **The cost-optimal threshold is very low but operationally reasonable.** It flags only 228 of 85,118 test transactions (0.27%), and about half of those flags (53.1%) are real fraud. Ten additional frauds are caught compared with the default, at the price of roughly 100 extra false alarms, a trade worth making when a missed fraud costs about 24 times a false alarm.
+- **Estimated saving of about 19%** versus the default threshold ($3,813.55 down to $3,101.44).
+- **Caveat.** The result depends on the $5 false-alarm assumption. A higher real cost per false alarm would move the optimal threshold up. The threshold was also chosen on the same test set it was evaluated on, so the savings figure is optimistic; validating on fresh data would be the next step before relying on it.
+
+**Decision:** the cost-optimal threshold (0.0048) is selected as the final operating point, with the F1-optimal threshold reported alongside it for comparison.
+
 ## Results
 
 > Results will be added here after the evaluation notebook is completed. This section will contain the final model comparison table, the Precision-Recall curves and the cost-based threshold analysis.
@@ -327,7 +348,7 @@ The request body takes the 30 model features: `Time`, `V1` to `V28`, and `Amount
 - [x] Gradient boosting models (XGBoost, LightGBM) evaluated with PR-AUC
 - [x] Isolation Forest (unsupervised baseline) and 5-fold cross-validation
 - [x] Hyperparameter tuning
-- [ ] Threshold tuning and cost-based analysis
+- [x] Threshold tuning and cost-based analysis
 - [ ] SHAP explainability
 - [ ] Refactor notebooks into a reusable `src/` package
 - [ ] FastAPI prediction service
