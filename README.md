@@ -209,24 +209,31 @@ The tuned model reached the best PR-AUC of the project (0.835), a modest ~0.01 i
 
 ## Threshold Tuning and Cost-Based Analysis
 
-A classifier outputs a fraud probability, and a cutoff (the *threshold*) turns it into a yes/no decision. Every result so far used the default 0.5, which implicitly treats a missed fraud and a false alarm as equally costly. In practice a missed fraud costs far more, so the threshold was tuned for the XGBoost (tuned) model on the held-out test set using two different goals.
+A classifier outputs a fraud probability, and a cutoff (the *threshold*) turns it into a yes/no decision. Every result so far used the default 0.5, which implicitly treats a missed fraud and a false alarm as equally costly. In practice a missed fraud costs far more, so the threshold was tuned for the XGBoost (tuned) model.
 
 **Cost model.** A missed fraud (false negative) costs the average fraud transaction amount in the dataset (about $122, computed from the data). A false alarm (false positive) costs **$5, which is an assumption**, not a measured figure, since the dataset contains no information about the cost of handling a false alarm.
 
-| Threshold | Value | Fraud caught | Fraud missed | False alarms | Recall | Precision | Estimated cost |
-|---|---|---|---|---|---|---|---|
-| Default | 0.5 | 111 | 31 | 5 | 78.2% | 95.7% | $3,813.55 |
-| F1-optimal | 0.2352 | 114 | 28 | 7 | 80.3% | 94.2% | ~$3,457 |
-| **Cost-optimal** | **0.0048** | **121** | **21** | **107** | **85.2%** | **53.1%** | **$3,101.44** |
+**Two ways of choosing the threshold were compared.**
+
+1. *Tuned directly on the test set.* Searching for the cheapest threshold on the same test set used to report results gives 0.0048. This is optimistic: the threshold is fitted to those particular 142 fraud cases, so the resulting cost is the best this test set could ever show, not an honest estimate.
+2. *Tuned on out-of-fold predictions from the training set.* Every training row is predicted by a model that never saw it (5-fold cross-validation), the cheapest threshold is found there (0.0615), and the test set is then used only once to report the result. This is the method used for the final decision.
+
+| Threshold | How chosen | Value | Fraud caught | Fraud missed | False alarms | Estimated test cost |
+|---|---|---|---|---|---|---|
+| Default | convention | 0.5 | 111 | 31 | 5 | $3,813.55 |
+| F1-optimal | on test set | 0.2352 | 114 | 28 | 7 | ~$3,457 |
+| Cost-optimal (test-tuned, optimistic) | on test set | 0.0048 | 121 | 21 | 107 | $3,101.44 |
+| **Cost-optimal (out-of-fold, final)** | **training set** | **0.0615** | **115** | **27** | **25** | **$3,424.71** |
 
 **Key findings:**
 
-- **The two goals disagree.** The F1-optimal threshold balances precision and recall mathematically; the cost-optimal threshold minimizes money lost. They land at very different cutoffs (0.2352 vs 0.0048), so "best threshold" depends on what is being optimized.
-- **The cost-optimal threshold is very low but operationally reasonable.** It flags only 228 of 85,118 test transactions (0.27%), and about half of those flags (53.1%) are real fraud. Ten additional frauds are caught compared with the default, at the price of roughly 100 extra false alarms, a trade worth making when a missed fraud costs about 24 times a false alarm.
-- **Estimated saving of about 19%** versus the default threshold ($3,813.55 down to $3,101.44).
-- **Caveat.** The result depends on the $5 false-alarm assumption. A higher real cost per false alarm would move the optimal threshold up. The threshold was also chosen on the same test set it was evaluated on, so the savings figure is optimistic; validating on fresh data would be the next step before relying on it.
+- **The honest saving is about 10%, not 19%.** Choosing the threshold without looking at the test set gives a test cost of $3,424.71 against $3,813.55 at the default, a saving of roughly $389 (10.2%). The earlier figure of $3,101.44 ($712 saved) was the test-set-tuned result and overstated the benefit.
+- **The final threshold is also far more moderate.** At 0.0615 the model flags 140 of 85,118 test transactions (0.16%); 115 of them are real fraud (precision about 82%, recall about 81%). The test-tuned threshold of 0.0048 produced 107 false alarms for six extra frauds caught, which was an artefact of tuning on those specific cases.
+- **The out-of-fold threshold rests on more evidence.** It is chosen from roughly 345 fraud cases in the training data rather than the 142 in the test set, so it is less sensitive to a handful of unusual cases.
+- **F1 and cost disagree about the best threshold.** The F1-optimal threshold balances precision and recall; the cost-optimal one minimizes money lost. Which is "best" depends on what is being optimized.
+- **Caveats.** The result depends on the $5 false-alarm assumption; a higher real cost per false alarm would push the threshold up. The test set contains only 142 fraud cases, so a difference of a few cases (each worth about $122) moves the cost noticeably, and the savings figure should be read as approximate.
 
-**Decision:** the cost-optimal threshold (0.0048) is selected as the final operating point, with the F1-optimal threshold reported alongside it for comparison.
+**Decision:** the out-of-fold cost-optimal threshold (0.0615) is the final operating point, saved with the model.
 
 ## Results
 
